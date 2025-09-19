@@ -2,6 +2,8 @@
 #include <opencv2/opencv.hpp>
 #include <string>
 
+using namespace Napi;
+
 std::string get_dhash(const cv::Mat &image)
 {
 
@@ -43,3 +45,38 @@ std::string get_dhash(const cv::Mat &image)
 
     return hashed_value;
 }
+
+Value HashImage(const CallbackInfo &info)
+{
+    Env node_env = info.Env();
+
+    // Ensures that image is provided
+    if (info.Length() < 1 || !info[0].IsString())
+    {
+        throw TypeError::New(node_env, "Image path expected"); // Outputs error to node
+    }
+
+    std::string image_path = info[0].As<String>().Utf8Value();
+
+    cv::Mat image = cv::imread(image_path);
+
+    // Hashing provided image
+    try
+    {
+        std::string hash = get_dhash(image);
+        return String::New(node_env, hash);
+    }
+    catch (const std::exception &e)
+    {
+        throw Error::New(node_env, e.what());
+    }
+}
+
+// The wrapper
+Object Init(Env env, Object exports)
+{
+    exports.Set("hashImage", Function::New(env, HashImage));
+    return exports;
+}
+
+NODE_API_MODULE(photo_hasher, Init)
